@@ -1,6 +1,6 @@
 import unittest
 
-from honorifics.textswapper import TextSwapperInMark
+from honorifics.text_swapper import TextSwapperInMark
 
 
 class TestSwapperInMark(unittest.TestCase):

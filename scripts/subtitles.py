@@ -2,7 +2,7 @@
 import sys
 sys.path.insert(0, '../')
 
-from honorifics.textswapper import TextSwapperInMark
+from honorifics.text_swapper import TextSwapperInMark
 
 
 swapper = TextSwapperInMark()
