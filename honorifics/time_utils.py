@@ -3,12 +3,12 @@ import re
 pattern_time = re.compile(r'\d+')
 
 
-def from_ass_to_cs(time: str) -> int:
+def from_substation_to_cs(time: str) -> int:
     new_time = tuple(map(int, pattern_time.findall(time)))
     return new_time[3] + new_time[2] * 100 + new_time[1] * 6000 + new_time[0] * 360000
 
 
-def from_cs_to_ass(time: int) -> str:
+def from_cs_to_substation(time: int) -> str:
     hours = int(time / 360000)
     time -= hours * 360000
     minutes = int(time / 6000)
@@ -22,14 +22,14 @@ def from_cs_to_ass(time: int) -> str:
 frame_rate = 23.976
 
 _conversion_table = {
-    '.ass': {
-        'cs': from_ass_to_cs
+    '.substation': {
+        'cs': from_substation_to_cs
     },
     'frame': {
         'cs': lambda x: int(100 * x / frame_rate)
     },
     'cs': {
-        '.ass': from_cs_to_ass,
+        '.substation': from_cs_to_substation,
         'cs': lambda x: x
     },
     'ms': {
