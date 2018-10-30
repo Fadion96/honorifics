@@ -77,14 +77,12 @@ def main(arguments):
         if arguments.subtitles:
             first_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
             second_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
-    first_pass += " -c:v libvpx-vp9 -pass 1 -pix_fmt yuv420p -crf 21 -threads 3 -speed 4 -tile-columns 6 -frame-parallel 1 -b:v 0 -an -f matroska NUL"
+    first_pass += " -c:v libvpx-vp9 -pass 1 -pix_fmt yuv420p -crf 21 -threads 3 -speed 4 -tile-columns 6 -frame-parallel 1 -b:v 0 -an -f matroska /dev/null"
     second_pass += " -c:v libvpx-vp9 -pass 2 -pix_fmt yuv420p -crf 21 -threads 3 -speed 1 -tile-columns 6 -frame-parallel 1 -b:v 0 -auto-alt-ref 1 -lag-in-frames 25 -an -f matroska " + arguments.output
     command = first_pass + second_pass
-    print(command)
     os.system(command)
 
 
 if __name__ == '__main__':
     args = parse_arg()
-    # print(args)
     main(args)
