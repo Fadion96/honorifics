@@ -6,10 +6,11 @@ import argparse
 def parse_arg():
     parser = argparse.ArgumentParser(description="Codec changer with negate filter at the given timestamps")
     parser.add_argument("input_video", type=str, help="Input video")
-    parser.add_argument("timestamp", type=int, help="Timestamp in seconds", nargs='+')
-    parser.add_argument("-duration", "-d", nargs='*', type=int, help="Duration of negation in seconds (default = 10)", default=10)
+    parser.add_argument("timestamp", type=int, help="Timestamp in seconds", nargs='*')
+    parser.add_argument("-duration", "-d", nargs='*', type=int, help="Duration of negation in seconds (default = 10)", default=[10])
     parser.add_argument("-output", "-o", metavar='output', nargs="?", type=str, help="Output video",
                         default="output.mkv")
+    parser.add_argument("-subtitles", "-s", metavar="subtitles", type=str, help="subtitles to be hardsubbed")
     return parser.parse_args()
 
 
@@ -38,35 +39,52 @@ def end_of_video(timestamp, last_part):
     return result
 
 
+def end_of_video_subs(timestamp, last_part, subtitles):
+    result = "[0:0]trim=start=" + str(timestamp) + ",setpts=PTS-STARTPTS[ending];"
+    result += last_part + "[ending]concat[subs];"
+    result += "[subs]ass=" + subtitles.replace(".\\", "") + "[out1]\" "
+    return result
+
+
 def main(arguments):
-    if len(arguments.timestamp) > len(arguments.duration):
-        diff = len(arguments.timestamp) - len(arguments.duration)
-        arguments.duration.extend([10]*diff)
-    first_pass = "ffmpeg "
-    first_pass += "-i " + arguments.input_video
-    filter_complex = " -filter_complex "
-    start, last_part = start_of_video(arguments.timestamp[0])
-    filter_complex += start
-    for i in range(len(arguments.timestamp)-1):
-        negation, last_part = negation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
-        filter_complex += negation
-        normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
-        normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i+1] - normal_timestamp, last_part, i)
-        filter_complex += normal
-    last_index = len(arguments.timestamp) - 1
-    last_negation, last_part = negation_part(arguments.timestamp[last_index], arguments.duration[last_index], last_part, last_index)
-    filter_complex += last_negation
-    end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
-    filter_complex += end
-    filter_complex += "-map [out1] "
-    first_pass += filter_complex
-    first_pass += "-c:v libvpx-vp9 -crf 21 -b:v 2000k -pix_fmt yuv420p -pass 1 -speed 4 -map 0:1 -c:a copy -map 0:2 -f matroska /dev/null"
-    second_pass = " && ffmpeg -i "
-    second_pass += arguments.input_video + filter_complex
-    second_pass += " -c:v libvpx-vp9 -crf 21 -b:v 2000k -pix_fmt yuv420p -pass 2 -speed 1 -map 0:1 -c:a copy -map 0:2 " + arguments.output
-    os.system(first_pass + second_pass)
+    first_pass = "ffmpeg -y -i " + arguments.input_video
+    second_pass = " && ffmpeg -y -i " + arguments.input_video
+    if arguments.timestamp:
+        if len(arguments.timestamp) > len(arguments.duration):
+            diff = len(arguments.timestamp) - len(arguments.duration)
+            arguments.duration.extend([10]*diff)
+        filter_complex = " -filter_complex "
+        start, last_part = start_of_video(arguments.timestamp[0])
+        filter_complex += start
+        for i in range(len(arguments.timestamp)-1):
+            negation, last_part = negation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+            filter_complex += negation
+            normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
+            normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i+1] - normal_timestamp, last_part, i)
+            filter_complex += normal
+        last_index = len(arguments.timestamp) - 1
+        last_negation, last_part = negation_part(arguments.timestamp[last_index], arguments.duration[last_index], last_part, last_index)
+        filter_complex += last_negation
+        if arguments.subtitles:
+            end = end_of_video_subs(arguments.timestamp[last_index] + arguments.duration[last_index], last_part, arguments.subtitles)
+        else:
+            end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
+        filter_complex += end
+        filter_complex += "-map [out1]"
+        first_pass += filter_complex
+        second_pass += filter_complex
+    else:
+        if arguments.subtitles:
+            first_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
+            second_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
+    first_pass += " -c:v libvpx-vp9 -pass 1 -pix_fmt yuv420p -crf 21 -threads 3 -speed 4 -tile-columns 6 -frame-parallel 1 -b:v 0 -an -f matroska NUL"
+    second_pass += " -c:v libvpx-vp9 -pass 2 -pix_fmt yuv420p -crf 21 -threads 3 -speed 1 -tile-columns 6 -frame-parallel 1 -b:v 0 -auto-alt-ref 1 -lag-in-frames 25 -an -f matroska " + arguments.output
+    command = first_pass + second_pass
+    print(command)
+    os.system(command)
 
 
 if __name__ == '__main__':
     args = parse_arg()
+    # print(args)
     main(args)
