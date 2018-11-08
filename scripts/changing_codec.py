@@ -11,6 +11,7 @@ def parse_arg():
     parser.add_argument("-output", "-o", metavar='output', nargs="?", type=str, help="Output video",
                         default="output.mkv")
     parser.add_argument("-subtitles", "-s", metavar="subtitles", type=str, help="subtitles to be hardsubbed")
+    parser.add_argument("-deband", "-de", action='store_true')
     return parser.parse_args()
 
 
@@ -24,6 +25,15 @@ def negation_part(timestamp, duration, last_part, number):
     result += "[trimmed" + str(number) + "]negate[negation" + str(number) + "];"
     result += last_part + "[negation" + str(number) + "]concat[negated" + str(number) + "];"
     return result, "[negated" + str(number) + "]"
+
+
+def deband_noise_part(timestamp, duration, last_part, number):
+    result = "[0:0]trim=start=" + str(timestamp) + ":duration=" + str(duration) + ",setpts=PTS-STARTPTS[trimmed" + str(
+        number) + "];"
+    result += "[trimmed" + str(number) + "]deband[debanded" + str(number) + "];"
+    result += "[debanded" + str(number) + "]noise=alls=6:allf=t[noise" + str(number) + "];"
+    result += last_part + "[noise" + str(number) + "]concat[debnoise" + str(number) + "];"
+    return result, "[debnoise" + str(number) + "]"
 
 
 def normal_part(timestamp, duration, last_part, number):
@@ -47,6 +57,10 @@ def end_of_video_subs(timestamp, last_part, subtitles):
 
 
 def main(arguments):
+    if arguments.deband:
+        operation_part = deband_noise_part
+    else:
+        operation_part = negation_part
     first_pass = "ffmpeg -y -i " + arguments.input_video
     second_pass = " && ffmpeg -y -i " + arguments.input_video
     if arguments.timestamp:
@@ -57,14 +71,14 @@ def main(arguments):
         start, last_part = start_of_video(arguments.timestamp[0])
         filter_complex += start
         for i in range(len(arguments.timestamp)-1):
-            negation, last_part = negation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
-            filter_complex += negation
+            operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+            filter_complex += operation
             normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
             normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i+1] - normal_timestamp, last_part, i)
             filter_complex += normal
         last_index = len(arguments.timestamp) - 1
-        last_negation, last_part = negation_part(arguments.timestamp[last_index], arguments.duration[last_index], last_part, last_index)
-        filter_complex += last_negation
+        last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index], last_part, last_index)
+        filter_complex += last_operation
         if arguments.subtitles:
             end = end_of_video_subs(arguments.timestamp[last_index] + arguments.duration[last_index], last_part, arguments.subtitles)
         else:
