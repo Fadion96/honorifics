@@ -59,7 +59,7 @@ def end_of_video_subs(timestamp, last_part, subtitles):
 def hms_to_seconds(timestamp):
     t = 0
     for u in timestamp.split(':'):
-        t = 60 * t + int(u)
+        t = 60 * t + float(u)
     return t
 
 
@@ -86,8 +86,8 @@ def main(arguments):
             for i in range(len(times) - 1):
                 operation, last_part = operation_part(times[i], durations[i], last_part, i)
                 filter_complex += operation
-                normal_timestamp = times[i] + durations[i]
-                normal, last_part = normal_part(normal_timestamp, times[i + 1] - normal_timestamp,
+                normal_timestamp = round(times[i] + durations[i], 3)
+                normal, last_part = normal_part(normal_timestamp, round(times[i + 1] - normal_timestamp, 3),
                                                 last_part, i)
                 filter_complex += normal
             last_index = len(times) - 1
@@ -95,7 +95,7 @@ def main(arguments):
                                                        last_part, last_index)
             filter_complex += last_operation
             if arguments.subtitles:
-                end = end_of_video_subs(times[last_index] + durations[last_index], last_part,
+                end = end_of_video_subs(round(times[last_index] + durations[last_index], 3), last_part,
                                         arguments.subtitles)
             else:
                 end = end_of_video(times[last_index] + durations[last_index], last_part)
@@ -132,15 +132,15 @@ def main(arguments):
             for i in range(len(times) - 1):
                 operation, last_part = operation_part(times[i], durations[i], last_part, i)
                 filter_complex += operation
-                normal_timestamp = times[i] + durations[i]
-                normal, last_part = normal_part(normal_timestamp, times[i + 1] - normal_timestamp,
+                normal_timestamp = round(times[i] + durations[i], 3)
+                normal, last_part = normal_part(normal_timestamp, round(times[i + 1] - normal_timestamp, 3),
                                                 last_part, i)
                 filter_complex += normal
             last_index = len(arguments.timestamp) - 1
             last_operation, last_part = operation_part(times[last_index], durations[last_index],
                                                        last_part, last_index)
             filter_complex += last_operation
-            end = end_of_video(times[last_index] + durations[last_index], last_part)
+            end = end_of_video(round(times[last_index] + durations[last_index], 3), last_part)
             filter_complex += end[:-2]
             filter_complex += ";[out1]scale=-1:360[out2]\" "
             filter_complex += "-map [out2]"
