@@ -20,11 +20,20 @@ If in dialogue event line at the end of Text field is {+|- number cs|ms|frame|fr
 e.g. `{+5 frames}` then shift accordingly Start and End time field.
 Default frame rate is 23.976.
 
+###### changing_codec.py
+
+For video files. Optional arguments -duration, -deband, -subtitles, -output
+
+Script adds visual effects on given timestamps and durations, and changes codec to VP9 with .mkv extension.
+Optionally script hardsubs given subtitle file to the video.
+
 ### Examples
 
 `python3 ./scripts/subtitles.py < input > output`
 
 `python3 ./scripts/timing_offset.py -fps 29.97 < input.ass > output.ass`
+
+`python3 ./scripts/changing_codec.py -i input [timestamp] -d [duration] -o output.mkv`
 
 ### Useful tools
 
