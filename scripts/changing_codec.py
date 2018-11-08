@@ -59,41 +59,70 @@ def end_of_video_subs(timestamp, last_part, subtitles):
 def main(arguments):
     if arguments.deband:
         operation_part = deband_noise_part
+        first_pass = "ffmpeg -y -i " + arguments.input_video
+        second_pass = " && ffmpeg -y -i " + arguments.input_video
+        if arguments.timestamp:
+            if len(arguments.timestamp) > len(arguments.duration):
+                diff = len(arguments.timestamp) - len(arguments.duration)
+                arguments.duration.extend([10] * diff)
+            filter_complex = " -filter_complex "
+            start, last_part = start_of_video(arguments.timestamp[0])
+            filter_complex += start
+            for i in range(len(arguments.timestamp) - 1):
+                operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+                filter_complex += operation
+                normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
+                normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i + 1] - normal_timestamp,
+                                                last_part, i)
+                filter_complex += normal
+            last_index = len(arguments.timestamp) - 1
+            last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index],
+                                                       last_part, last_index)
+            filter_complex += last_operation
+            if arguments.subtitles:
+                end = end_of_video_subs(arguments.timestamp[last_index] + arguments.duration[last_index], last_part,
+                                        arguments.subtitles)
+            else:
+                end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
+            filter_complex += end
+            filter_complex += "-map [out1]"
+            first_pass += filter_complex
+            second_pass += filter_complex
+        else:
+            if arguments.subtitles:
+                first_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
+                second_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
+        first_pass += " -c:v libvpx-vp9 -pass 1 -pix_fmt yuv420p -crf 21 -threads 3 -speed 4 -tile-columns 6 -frame-parallel 1 -b:v 0 -an -f matroska /dev/null"
+        second_pass += " -c:v libvpx-vp9 -pass 2 -pix_fmt yuv420p -crf 21 -threads 3 -speed 1 -tile-columns 6 -frame-parallel 1 -b:v 0 -auto-alt-ref 1 -lag-in-frames 25 -an -f matroska " + arguments.output
+        command = first_pass + second_pass
     else:
         operation_part = negation_part
-    first_pass = "ffmpeg -y -i " + arguments.input_video
-    second_pass = " && ffmpeg -y -i " + arguments.input_video
-    if arguments.timestamp:
-        if len(arguments.timestamp) > len(arguments.duration):
-            diff = len(arguments.timestamp) - len(arguments.duration)
-            arguments.duration.extend([10]*diff)
-        filter_complex = " -filter_complex "
-        start, last_part = start_of_video(arguments.timestamp[0])
-        filter_complex += start
-        for i in range(len(arguments.timestamp)-1):
-            operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
-            filter_complex += operation
-            normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
-            normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i+1] - normal_timestamp, last_part, i)
-            filter_complex += normal
-        last_index = len(arguments.timestamp) - 1
-        last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index], last_part, last_index)
-        filter_complex += last_operation
-        if arguments.subtitles:
-            end = end_of_video_subs(arguments.timestamp[last_index] + arguments.duration[last_index], last_part, arguments.subtitles)
-        else:
+        first_pass = "ffmpeg -y -i " + arguments.input_video
+        if arguments.timestamp:
+            if len(arguments.timestamp) > len(arguments.duration):
+                diff = len(arguments.timestamp) - len(arguments.duration)
+                arguments.duration.extend([10] * diff)
+            filter_complex = " -filter_complex "
+            start, last_part = start_of_video(arguments.timestamp[0])
+            filter_complex += start
+            for i in range(len(arguments.timestamp) - 1):
+                operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+                filter_complex += operation
+                normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
+                normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i + 1] - normal_timestamp,
+                                                last_part, i)
+                filter_complex += normal
+            last_index = len(arguments.timestamp) - 1
+            last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index],
+                                                       last_part, last_index)
+            filter_complex += last_operation
             end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
-        filter_complex += end
-        filter_complex += "-map [out1]"
-        first_pass += filter_complex
-        second_pass += filter_complex
-    else:
-        if arguments.subtitles:
-            first_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
-            second_pass += " -vf \"ass=" + arguments.subtitles.replace(".\\", "") + "\" "
-    first_pass += " -c:v libvpx-vp9 -pass 1 -pix_fmt yuv420p -crf 21 -threads 3 -speed 4 -tile-columns 6 -frame-parallel 1 -b:v 0 -an -f matroska /dev/null"
-    second_pass += " -c:v libvpx-vp9 -pass 2 -pix_fmt yuv420p -crf 21 -threads 3 -speed 1 -tile-columns 6 -frame-parallel 1 -b:v 0 -auto-alt-ref 1 -lag-in-frames 25 -an -f matroska " + arguments.output
-    command = first_pass + second_pass
+            filter_complex += end[:-2]
+            filter_complex += ";[out1]scale=-1:360[out2]\" "
+            filter_complex += "-map [out2]"
+            first_pass += filter_complex
+        first_pass += " -c:v -c:v libx264 -preset ultrafast " + arguments.output
+        command = first_pass
     os.system(command)
 
 
