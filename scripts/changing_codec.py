@@ -6,8 +6,8 @@ import argparse
 def parse_arg():
     parser = argparse.ArgumentParser(description="Codec changer with negate filter at the given timestamps")
     parser.add_argument("input_video", type=str, help="Input video")
-    parser.add_argument("timestamp", type=int, help="Timestamp in seconds", nargs='*')
-    parser.add_argument("-duration", "-d", nargs='*', type=int, help="Duration of negation in seconds (default = 10)", default=[10])
+    parser.add_argument("timestamp", type=str, help="Timestamp in seconds", nargs='*')
+    parser.add_argument("-duration", "-d", nargs='*', type=str, help="Duration of negation in seconds (default = 10)", default=["10"])
     parser.add_argument("-output", "-o", metavar='output', nargs="?", type=str, help="Output video",
                         default="output.mkv")
     parser.add_argument("-subtitles", "-s", metavar="subtitles", type=str, help="subtitles to be hardsubbed")
@@ -56,34 +56,49 @@ def end_of_video_subs(timestamp, last_part, subtitles):
     return result
 
 
+def hms_to_seconds(timestamp):
+    t = 0
+    for u in timestamp.split(':'):
+        t = 60 * t + float(u)
+    return t
+
+
 def main(arguments):
     if arguments.deband:
         operation_part = deband_noise_part
         first_pass = "ffmpeg -y -i " + arguments.input_video
         second_pass = " && ffmpeg -y -i " + arguments.input_video
         if arguments.timestamp:
+            times = []
+            durations = []
             if len(arguments.timestamp) > len(arguments.duration):
                 diff = len(arguments.timestamp) - len(arguments.duration)
-                arguments.duration.extend([10] * diff)
+                arguments.duration.extend(["10"] * diff)
+            for s in arguments.timestamp:
+                seconds = hms_to_seconds(s)
+                times.append(seconds)
+            for d in arguments.duration:
+                duration_seconds = hms_to_seconds(d)
+                durations.append(duration_seconds)
             filter_complex = " -filter_complex "
-            start, last_part = start_of_video(arguments.timestamp[0])
+            start, last_part = start_of_video(times[0])
             filter_complex += start
-            for i in range(len(arguments.timestamp) - 1):
-                operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+            for i in range(len(times) - 1):
+                operation, last_part = operation_part(times[i], durations[i], last_part, i)
                 filter_complex += operation
-                normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
-                normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i + 1] - normal_timestamp,
+                normal_timestamp = round(times[i] + durations[i], 3)
+                normal, last_part = normal_part(normal_timestamp, round(times[i + 1] - normal_timestamp, 3),
                                                 last_part, i)
                 filter_complex += normal
-            last_index = len(arguments.timestamp) - 1
-            last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index],
+            last_index = len(times) - 1
+            last_operation, last_part = operation_part(times[last_index], durations[last_index],
                                                        last_part, last_index)
             filter_complex += last_operation
             if arguments.subtitles:
-                end = end_of_video_subs(arguments.timestamp[last_index] + arguments.duration[last_index], last_part,
+                end = end_of_video_subs(round(times[last_index] + durations[last_index], 3), last_part,
                                         arguments.subtitles)
             else:
-                end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
+                end = end_of_video(times[last_index] + durations[last_index], last_part)
             filter_complex += end
             filter_complex += "-map [out1]"
             first_pass += filter_complex
@@ -99,30 +114,40 @@ def main(arguments):
         operation_part = negation_part
         first_pass = "ffmpeg -y -i " + arguments.input_video
         if arguments.timestamp:
+            times = []
+            durations = []
             if len(arguments.timestamp) > len(arguments.duration):
                 diff = len(arguments.timestamp) - len(arguments.duration)
-                arguments.duration.extend([10] * diff)
+                arguments.duration.extend(["10"] * diff)
+            for s in arguments.timestamp:
+                seconds = hms_to_seconds(s)
+                times.append(seconds)
+            for d in arguments.duration:
+                duration_seconds = hms_to_seconds(d)
+                durations.append(duration_seconds)
+
             filter_complex = " -filter_complex "
-            start, last_part = start_of_video(arguments.timestamp[0])
+            start, last_part = start_of_video(times[0])
             filter_complex += start
-            for i in range(len(arguments.timestamp) - 1):
-                operation, last_part = operation_part(arguments.timestamp[i], arguments.duration[i], last_part, i)
+            for i in range(len(times) - 1):
+                operation, last_part = operation_part(times[i], durations[i], last_part, i)
                 filter_complex += operation
-                normal_timestamp = arguments.timestamp[i] + arguments.duration[i]
-                normal, last_part = normal_part(normal_timestamp, arguments.timestamp[i + 1] - normal_timestamp,
+                normal_timestamp = round(times[i] + durations[i], 3)
+                normal, last_part = normal_part(normal_timestamp, round(times[i + 1] - normal_timestamp, 3),
                                                 last_part, i)
                 filter_complex += normal
             last_index = len(arguments.timestamp) - 1
-            last_operation, last_part = operation_part(arguments.timestamp[last_index], arguments.duration[last_index],
+            last_operation, last_part = operation_part(times[last_index], durations[last_index],
                                                        last_part, last_index)
             filter_complex += last_operation
-            end = end_of_video(arguments.timestamp[last_index] + arguments.duration[last_index], last_part)
+            end = end_of_video(round(times[last_index] + durations[last_index], 3), last_part)
             filter_complex += end[:-2]
             filter_complex += ";[out1]scale=-1:360[out2]\" "
             filter_complex += "-map [out2]"
             first_pass += filter_complex
-        first_pass += " -c:v -c:v libx264 -preset ultrafast " + arguments.output
+        first_pass += " -c:v libx264 -preset ultrafast " + arguments.output
         command = first_pass
+    print("\n", command, "\n")
     os.system(command)
 
 
