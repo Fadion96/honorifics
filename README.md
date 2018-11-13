@@ -22,9 +22,9 @@ Default frame rate is 23.976.
 
 ##### changing_codec.py
 
-For video files. Optional arguments -duration, -deband, -subtitles, -output
+For video files. Optional arguments -timestamp, -deband, -subtitles, -output
 
-Script adds visual effects on given timestamps and durations, and changes codec to VP9 with .mkv extension.
+Script adds visual effects on given timestamps and changes codec to VP9 with .mkv extension.
 Optionally script hardsubs given subtitle file to the video.
 
 ### Examples
@@ -33,7 +33,7 @@ Optionally script hardsubs given subtitle file to the video.
 
 `python3 ./scripts/timing_offset.py -fps 29.97 < input.ass > output.ass`
 
-`python3 ./scripts/changing_codec.py -i input [timestamp] -d [duration] -o output.mkv`
+`python3 ./scripts/changing_codec.py -i input -t start_filter end_filter -o output.mkv`
 
 ### Useful tools
 
