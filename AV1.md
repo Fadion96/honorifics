@@ -15,6 +15,10 @@ https://aomedia.googlesource.com/aom/#building-the-library-and-applications
 
 `./aomenc.exe -p 2 --pass=2 -t 3 --cpu-used=4 --tile-columns=6 --frame-parallel=1 -w 1280 -h 720 --auto-alt-ref=1 --lag-in-frames=25 --profile=0 --end-usage=q --target-bitrate=1500 --fpf=[output].log -o [output].mkv [file].y4m`
 
+##### Pipe version (Linux only):
+`ffmpeg -i [input] -pix_fmt yuv420p -f yuv4mpegpipe - | ./aomenc -p 2 --pass=1 -t 3 --cpu-used=4 --tile-columns=6 --frame-parallel=1 -w 1280 -h 720 --auto-alt-ref=1 --lag-in-frames=25 --profile=0 --end-usage=q --target-bitrate=800 --fpf=[output].log -o [output].mkv -`
+`ffmpeg -i [input] -pix_fmt yuv420p -f yuv4mpegpipe - | ./aomenc -p 2 --pass=2 -t 3 --cpu-used=4 --tile-columns=6 --frame-parallel=1 -w 1280 -h 720 --auto-alt-ref=1 --lag-in-frames=25 --profile=0 --end-usage=q --target-bitrate=800 --fpf=[output].log -o [output].mkv -`
+
 ##Rav1e installation
 https://github.com/xiph/rav1e
 
@@ -25,6 +29,9 @@ https://github.com/xiph/rav1e
 
 `ffmpeg -i [file2].ivf -c:v copy [output].mkv`
 
+##### Pipe version (Linux only):
+`ffmpeg -i [input] -pix_fmt yuv420p -f yuv4mpegpipe - | ./rav1e - -o [output].ivf --quantizer 85 --speed 3`
+`ffmpeg -i [output].ivf -c:v copy [output].mkv`
 ###Video players which supports AV1:
 #####VLC:
 https://www.videolan.org/vlc/ - stable release, works on Linux only
